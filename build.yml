@@ -1,0 +1,41 @@
+name: Build SimuladorGravador.exe
+
+on:
+  workflow_dispatch:          # botão "Run workflow" na aba Actions
+  push:
+    tags: ["v*"]              # ao criar uma tag como v1.0.0, também publica um Release
+
+permissions:
+  contents: write             # necessário para anexar o .exe ao Release
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Instalar PyInstaller
+        run: pip install pyinstaller
+
+      - name: Compilar
+        shell: pwsh
+        run: |
+          $args = @("--onefile", "--windowed", "--name", "SimuladorGravador")
+          if (Test-Path "icon.ico") { $args += @("--icon", "icon.ico", "--add-data", "icon.ico;.") }
+          pyinstaller @args gravador_simulator.py
+
+      - name: Guardar o .exe
+        uses: actions/upload-artifact@v4
+        with:
+          name: SimuladorGravador
+          path: dist/SimuladorGravador.exe
+
+      - name: Anexar ao Release (só quando há tag)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/SimuladorGravador.exe
